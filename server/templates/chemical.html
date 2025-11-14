@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Advanced Virtual Chemistry Lab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #f9fafb;
+      --text-color: #111827;
+    }
+    body.dark {
+      --bg-color: #1f2937;
+      --text-color: #f3f4f6;
+    }
+    body {
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+    .header {
+      text-align: center;
+      padding: 20px;
+      background: #1e3a8a;
+      color: white;
+    }
+    .container-flex {
+      display: flex;
+      height: calc(100vh - 80px);
+    }
+    .sidebar {
+      width: 18%;
+      background: #e5e7eb;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .menu-btn {
+      background: #ffffff;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .search-box {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .chemicals-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chemical {
+      width: 45%;
+      height: 50px;
+      color: #fff;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      cursor: grab;
+    }
+    .blue { background-color: #3b82f6; }
+    .cyan { background-color: #06b6d4; }
+    .purple { background-color: #8b5cf6; }
+    .dark-blue { background-color: #2563eb; }
+    .pink { background-color: #f472b6; }
+    .lab {
+      width: 62%;
+      background: #ffffff;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .lab-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .timer {
+      background: #f59e0b;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+    }
+    .lab-tools {
+      margin-top: 40px;
+      display: flex;
+      justify-content: center;
+      gap: 50px;
+    }
+    .test-tube {
+      width: 30px;
+      height: 150px;
+      background: #e5e7eb;
+      border-radius: 0 0 20px 20px;
+      position: relative;
+    }
+    .test-tube-content {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 0;
+      background: transparent;
+      transition: height 0.5s;
+    }
+    .workspace-chemicals {
+      margin-top: 20px;
+      min-height: 100px;
+      background: #f1f5f9;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 14px;
+      overflow-y: auto;
+    }
+    .right-panel {
+      width: 20%;
+      background: #f3f4f6;
+      padding: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>🧪 Advanced Virtual Chemistry Lab</h2>
+    <p>Simulate reactions with interactivity, AI insights, and exportable notes.</p>
+    <button onclick="startVoiceCommand()" class="btn btn-warning mt-2">🎤 Ask AI</button>
+  </div>
+
+  <div class="p-3 bg-light d-flex align-items-center gap-2">
+    <label for="experimentName" class="fw-bold mb-0">Experiment:</label>
+    <input type="text" id="experimentName" class="form-control form-control-sm w-25" placeholder="e.g. Salt Titration">
+  </div>
+
+  <div class="container-flex">
+    <div class="sidebar">
+      <button class="menu-btn" onclick="showPanel('apparatus')">Apparatus</button>
+      <button class="menu-btn" onclick="showPanel('notebook')">Notebook</button>
+      <button class="menu-btn" onclick="showPanel('help')">Help</button>
+      <button class="menu-btn" onclick="showPanel('chemicals')">Chemicals</button>
+      <input type="text" placeholder="Search for chemicals" class="search-box" />
+      <div class="chemicals-list" id="chemicalOptions">
+        <div class="chemical blue" draggable="true" data-chem="NaOH">NaOH</div>
+        <div class="chemical purple" draggable="true" data-chem="HCl">HCl</div>
+        <div class="chemical pink" draggable="true" data-chem="Phenolphthalein">Phenolphthalein</div>
+        <div class="chemical cyan" draggable="true" data-chem="CuSO₄">CuSO₄</div>
+        <div class="chemical dark-blue" draggable="true" data-chem="NH₄OH">NH₄OH</div>
+        <div class="chemical pink" draggable="true" data-chem="FeCl₃">FeCl₃</div>
+        <div class="chemical purple" draggable="true" data-chem="K₂Cr₂O₇">K₂Cr₂O₇</div>
+        <div class="chemical blue" draggable="true" data-chem="AgNO₃">AgNO₃</div>
+      </div>
+      <button class="btn btn-sm btn-dark" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+      <button class="btn btn-sm btn-success mt-2" onclick="exportPDF()">Export Notes</button>
+      <button class="btn btn-sm btn-outline-danger mt-2" onclick="clearLog()">Clear Log</button>
+    </div>
+    <div class="lab">
+      <div class="lab-header">
+        <h3>Main Workspace</h3>
+        <div class="timer" id="timer">00:00:00</div>
+      </div>
+      <div class="lab-tools">
+        <div class="test-tube" ondrop="dropChemical(event, 'tube1')" ondragover="allowDrop(event)">
+          <div class="test-tube-content" id="tube1"></div>
+        </div>
+        <div class="test-tube" ondrop="dropChemical(event, 'tube2')" ondragover="allowDrop(event)">
+          <div class="test-tube-content" id="tube2"></div>
+        </div>
+      </div>
+      <div class="workspace-chemicals" id="mixLog">No chemicals mixed yet.</div>
+      <div class="mt-2" id="reactionInfo" style="font-size: 14px; color: #1f2937; font-weight: 500;"></div>
+    </div>
+    <div class="right-panel">
+      <h4>Panel</h4>
+      <div id="panel-content">Click buttons to open panels.</div>
+    </div>
+  </div>
+
+  <script>
+    function showPanel(type) {
+      const panel = document.getElementById("panel-content");
+      const data = {
+        chemicals: `Chemicals:\n- NaOH\n- HCl\n- Phenolphthalein\n- CuSO₄\n- NH₄OH\n- FeCl₃\n- K₂Cr₂O₇\n- AgNO₃`,
+        apparatus: "Apparatus: burner, test tube, measuring cylinder.",
+        notebook: "Notebook: Record all reactions here.",
+        help: "Drag and drop chemicals. Use voice or side tools for interactions."
+      };
+      panel.innerText = data[type] || "Nothing to show.";
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    const currentTubes = { tube1: [], tube2: [] };
+
+    const reactionPairs = {
+      "HCl+NaOH": {
+        equation: "NaOH + HCl → NaCl + H₂O",
+        explanation: "Neutralization reaction: sodium chloride and water are formed."
+      },
+      "CuSO₄+NH₄OH": {
+        equation: "CuSO₄ + 2NH₄OH → Cu(OH)₂↓ + (NH₄)₂SO₄",
+        explanation: "Precipitation: light blue Cu(OH)₂ forms."
+      },
+      "AgNO₃+FeCl₃": {
+        equation: "3AgNO₃ + FeCl₃ → 3AgCl↓ + Fe(NO₃)₃",
+        explanation: "White precipitate of AgCl forms."
+      }
+    };
+
+    function showReactionMessage(msg, isError = false) {
+      const reactionInfo = document.getElementById("reactionInfo");
+      reactionInfo.style.color = isError ? "#dc2626" : "#047857";
+      reactionInfo.innerText = msg;
+    }
+
+    function dropChemical(ev, tubeId) {
+      ev.preventDefault();
+      const chem = ev.dataTransfer.getData("text/plain");
+      const tube = document.getElementById(tubeId);
+
+      const div = document.createElement("div");
+      div.innerText = chem;
+      div.style.background = "#bae6fd";
+      div.style.padding = "2px 4px";
+      div.style.margin = "2px";
+      div.style.borderRadius = "4px";
+      tube.appendChild(div);
+
+      currentTubes[tubeId].push(chem);
+
+      showReactionMessage(`You added ${chem}.`);
+      checkReaction(tubeId);
+      updateMixLog(tubeId);
+    }
+
+    function checkReaction(tubeId) {
+      const addedSet = currentTubes[tubeId];
+      if (addedSet.length < 2) return;
+
+      const lastTwo = addedSet.slice(-2).sort().join("+");
+      const reaction = reactionPairs[lastTwo];
+
+      if (reaction) {
+        showReactionMessage(`⚗️ ${reaction.explanation}\n➡️ Equation: ${reaction.equation}`);
+        const log = document.getElementById("mixLog");
+        const reactionLog = `<div><strong>${tubeId}:</strong> ${reaction.equation} — ${reaction.explanation}</div>`;
+        log.innerHTML += reactionLog;
+      }
+    }
+
+    document.querySelectorAll('.chemical').forEach(elem => {
+      elem.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("text/plain", e.target.dataset.chem);
+      });
+    });
+
+    function updateMixLog(tubeId) {
+      const tube = document.getElementById(tubeId);
+      const mixLog = document.getElementById("mixLog");
+      const chemicals = Array.from(tube.children).map(div => div.innerText).join(" + ");
+      const reaction = `<div><strong>${tubeId}:</strong> ${chemicals}</div>`;
+      mixLog.innerHTML += reaction;
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+    }
+
+    function clearLog() {
+      document.getElementById("mixLog").innerHTML = "No chemicals mixed yet.";
+      document.getElementById("reactionInfo").innerText = "";
+      currentTubes.tube1 = [];
+      currentTubes.tube2 = [];
+      document.getElementById("tube1").innerHTML = "";
+      document.getElementById("tube2").innerHTML = "";
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("Virtual Chemistry Lab Notes", 10, 10);
+      const content = document.getElementById("mixLog").innerText;
+      doc.text(content, 10, 20);
+      doc.save("lab_notes.pdf");
+    }
+
+    function startVoiceCommand() {
+      alert("Voice input coming soon!");
+    }
+  </script>
+</body>
+</html>

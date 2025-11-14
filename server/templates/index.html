@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Virtual Lab Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      background: #f9fafc;
+      display: flex;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 240px;
+      background: #f1f5f9;
+      border-right: 1px solid #dbe0e6;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      color: #333;
+      margin-bottom: 1rem;
+    }
+    .language-option {
+      margin: 0.3rem 0;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #1a1a1a;
+      font-weight: 500;
+      border: 1px solid #e2e8f0;
+      transition: background 0.2s ease;
+    }
+    .language-option:hover { background: #e2ecf9; }
+    header {
+      position: fixed;
+      top: 0; left: 240px; right: 0;
+      background-color: #2563eb;
+      color: white;
+      padding: 1rem 2rem;
+      font-size: 1.4rem;
+      font-weight: bold;
+      z-index: 10;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+    .main-container {
+      flex: 1;
+      margin-left: 240px;
+      margin-top: 4.5rem;
+      display: flex;
+      height: calc(100vh - 4.5rem);
+      overflow: hidden;
+    }
+    .main {
+      flex: 2;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .right-panel {
+      width: 300px;
+      background: #eef3fb;
+      border-left: 1px solid #dbe0e6;
+      padding: 2rem 1rem;
+      overflow-y: auto;
+    }
+    form {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 800px;
+      margin: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      color: #1f2937;
+      margin-top: 1.5rem;
+    }
+    textarea, input[type="file"] {
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .mic-button {
+      font-size: 20px;
+      cursor: pointer;
+      background: #e2e8f0;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    button[type="submit"], .submit-btn {
+      background: #2563eb;
+      color: white;
+      padding: 12px 22px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 2rem;
+    }
+    .response {
+      margin-top: 2rem;
+      background: #ffffff;
+      padding: 1.5rem;
+      border-left: 5px solid #2563eb;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .speak-btn {
+      margin-top: 1rem;
+      background: #e0ecff;
+      color: #1d4ed8;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .live-experiments h3 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: #1e3a8a;
+    }
+    .chem-btn {
+      display: inline-block;
+      background: #22c55e;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h3>Select Output Language</h3>
+  <form id="lang-form" method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="user_prompt" id="hidden_prompt">
+    <input type="hidden" name="selected_lang" id="selected_lang">
+    {% for code, name in languages.items %}
+      <div class="language-option" onclick="submitLang('{{ code }}')">{{ name }}</div>
+    {% endfor %}
+  </form>
+</div>
+
+<header>
+  🧪 Virtual Lab Assistant
+</header>
+
+<div class="main-container">
+  <div class="main">
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      <label>Upload a PDF (optional):</label>
+      <input type="file" name="datafile" accept=".pdf">
+
+      <label>Ask your question:</label>
+      <div class="input-row">
+        <textarea name="user_prompt" id="user_prompt" placeholder="Type or speak your question..." required>{{ request.POST.user_prompt }}</textarea>
+        <button type="button" class="mic-button" id="mic-btn" title="Speak">🎤</button>
+      </div>
+
+      <input type="hidden" name="selected_lang" value="{{ selected_lang }}">
+      <button type="submit" class="submit-btn">💬 Ask</button>
+    </form>
+
+    {% if response %}
+      <div class="response">
+        <h3>🧠 Assistant Response:</h3>
+        <div>{{ response|safe }}</div>
+        <button class="speak-btn" onclick="speak()">🔊 Speak Answer</button>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="right-panel">
+    <div class="live-experiments">
+      <h3>🔬 Live Virtual Experiments</h3>
+      <a href="{% url 'chemical_lab' %}" class="chem-btn">🧪 ChemicalLab</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const micBtn = document.getElementById("mic-btn");
+  const textarea = document.getElementById("user_prompt");
+  const langMap = {
+    "en": "en-US", "hi": "hi-IN", "te": "te-IN", "ta": "ta-IN",
+    "kn": "kn-IN", "ml": "ml-IN", "mr": "mr-IN", "gu": "gu-IN",
+    "pa": "pa-IN", "bn": "bn-IN", "ur": "ur-IN", "zh-cn": "zh-CN",
+    "ja": "ja-JP", "de": "de-DE", "fr": "fr-FR", "es": "es-ES",
+    "ru": "ru-RU", "it": "it-IT"
+  };
+  const selectedLang = "{{ selected_lang|default:'en' }}";
+
+  if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new Recognition();
+    recognition.lang = langMap[selectedLang] || 'en-US';
+    recognition.interimResults = false;
+
+    micBtn.onclick = () => {
+      recognition.start();
+      micBtn.textContent = "🎷 Listening...";
+    };
+
+    recognition.onresult = (e) => {
+      textarea.value = e.results[0][0].transcript;
+      micBtn.textContent = "🎤";
+    };
+
+    recognition.onerror = () => micBtn.textContent = "🎤";
+    recognition.onend = () => micBtn.textContent = "🎤";
+  } else {
+    alert("⚠ Speech recognition not supported. Use Chrome or Edge over HTTPS.");
+  }
+
+  function speak() {
+    const text = "{{ tts_text|escapejs }}";
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = langMap[selectedLang] || 'en-US';
+    speechSynthesis.speak(utterance);
+  }
+
+  function submitLang(code) {
+    const prompt = document.getElementById("user_prompt").value;
+    document.getElementById("hidden_prompt").value = prompt;
+    document.getElementById("selected_lang").value = code;
+    document.getElementById("lang-form").submit();
+  }
+</script>
+</body>
+</html>
